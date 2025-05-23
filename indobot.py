@@ -1,3 +1,7 @@
+# chatbot_api.py
+
+from fastapi import FastAPI, Request
+from pydantic import BaseModel
 from sentence_transformers import SentenceTransformer
 import chromadb
 from chromadb.config import Settings
@@ -5,20 +9,22 @@ import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity, euclidean_distances
 import re
 
+# ----------------- Init FastAPI App ------------------
+app = FastAPI(title="Indonesian FAQ Chatbot API")
+
+# ----------------- Utilities ------------------
 def normalize(text):
     return re.sub(r'[^\w\s]', '', text.lower().strip())
 
-# ✅ Fix ChromaDB client initialization
+# ----------------- Load Model and Vector DB ------------------
 chroma_client = chromadb.PersistentClient(path="./chroma_data")
 collection = chroma_client.get_or_create_collection(
     name="indonesian_faq",
-    metadata={"distance_metric": "cosine"}  # or check your chromadb docs for correct param
+    metadata={"distance_metric": "cosine"}
 )
 
-# Load embedding model that supports Indonesian
 model = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
 
-# Your FAQ data (in Bahasa Indonesia)
 faqs = [
     {"id": "1", "question": "Bagaimana cara reset password?", "answer": "Klik tombol 'Lupa Password' di halaman login."},
     {"id": "2", "question": "Jam operasional bisnis Anda?", "answer": "Kami buka Senin sampai Jumat, pukul 08.00 sampai 17.00."},
@@ -28,43 +34,29 @@ faqs = [
     {"id": "3", "question": "Bagaimana cara menghubungi layanan pelanggan?", "answer": "Anda bisa menghubungi kami melalui WhatsApp di nomor 0812-3456-7890."}
 ]
 
-# Prepare and store embeddings
-questions = [normalize(f["question"]) for f in faqs]
-# questions = [f["question"] for f in faqs]
-embeddings = model.encode(questions, normalize_embeddings=True).tolist()
+# Add to ChromaDB if not already added
+existing = collection.count()
+if existing == 0:
+    questions = [normalize(f["question"]) for f in faqs]
+    embeddings = model.encode(questions, normalize_embeddings=True).tolist()
 
-collection.add(
-    documents=[f["answer"] for f in faqs],
-    metadatas=[{"question": f["question"]} for f in faqs],
-    ids=[f["id"] for f in faqs],
-    embeddings=embeddings
-)
+    collection.add(
+        documents=[f["answer"] for f in faqs],
+        metadatas=[{"question": f["question"]} for f in faqs],
+        ids=[f["id"] for f in faqs],
+        embeddings=embeddings
+    )
 
-def manual_similarity_check(user_input, faq_questions, model):
-    # Encode and normalize
+# ----------------- Search Logic ------------------
+def search_answer(user_input: str):
+    user_input = normalize(user_input)
     user_emb = model.encode([user_input], normalize_embeddings=True)
-    faq_embs = model.encode(faq_questions, normalize_embeddings=True)
-    
-    # Cosine similarity (user vs all FAQs)
-    cos_sim = cosine_similarity(user_emb, faq_embs)[0]  # 1D array
-    # Euclidean distance
-    euc_dist = euclidean_distances(user_emb, faq_embs)[0]
-    
-    print("\nManual similarity scores:")
-    for i, q in enumerate(faq_questions):
-        print(f"Q: {q}")
-        print(f" Cosine similarity: {cos_sim[i]:.4f}, Euclidean distance: {euc_dist[i]:.4f}")
-    return cos_sim, euc_dist
 
-# Function to search answer
-def search_answer(user_input):
-    user_emb = model.encode([user_input], normalize_embeddings=True)
-    
-    # Query ChromaDB
-    result = collection.query(query_embeddings=user_emb.tolist(), n_results=1, include=["distances", "metadatas", "documents"])
-    
-    documents = result.get('documents')
-    metadatas = result.get('metadatas')
+    result = collection.query(
+        query_embeddings=user_emb.tolist(),
+        n_results=1,
+        include=["distances", "metadatas", "documents"]
+    )
 
     # Manual similarity calculation
     faq_questions = [f["question"] for f in faqs]
@@ -88,11 +80,12 @@ def search_answer(user_input):
     else:
         return "Maaf, saya belum bisa menjawab pertanyaan itu."
 
-# Test example
-if __name__ == "__main__":
-    while True:
-        user_input = input("\nPertanyaan Anda: ")
-        user_input = normalize(user_input)
-        if user_input.lower() in ['exit', 'keluar']:
-            break
-        print("Jawaban Bot:", search_answer(user_input))
+# ----------------- Request Model ------------------
+class ChatRequest(BaseModel):
+    message: str
+
+# ----------------- API Route ------------------
+@app.post("/chat")
+def chatbot_reply(data: ChatRequest):
+    response = search_answer(data.message)
+    return {"reply": response}
