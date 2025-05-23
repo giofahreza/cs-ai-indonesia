@@ -75,12 +75,12 @@ def search_answer(user_input):
     best_idx = np.argmax(cos_sim)
     best_score = cos_sim[best_idx]
 
-    print(f"\nChromaDB matched question: '{metadatas[0][0]['question']}', raw distance: {result['distances'][0][0]:.4f}")
+    # print(f"\nChromaDB matched question: '{metadatas[0][0]['question']}', raw distance: {result['distances'][0][0]:.4f}")
     
-    print("\nManual similarity scores:")
-    for i, q in enumerate(faq_questions):
-        print(f"Q: {q}")
-        print(f" Cosine similarity: {cos_sim[i]:.4f}, Euclidean distance: {np.linalg.norm(user_emb - faq_embs[i]):.4f}")
+    # print("\nManual similarity scores:")
+    # for i, q in enumerate(faq_questions):
+    #     print(f"Q: {q}")
+    #     print(f" Cosine similarity: {cos_sim[i]:.4f}, Euclidean distance: {np.linalg.norm(user_emb - faq_embs[i]):.4f}")
 
     THRESHOLD = 0.65  # You can tune this
     if best_score >= THRESHOLD:
