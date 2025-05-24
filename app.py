@@ -8,6 +8,11 @@ from chromadb.config import Settings
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity, euclidean_distances
 import re
+from fastapi.responses import JSONResponse
+import json
+
+with open("faqs.json") as f:
+    faqs = json.load(f)
 
 # ----------------- Init FastAPI App ------------------
 app = FastAPI(title="Indonesian FAQ Chatbot API")
@@ -24,15 +29,6 @@ collection = chroma_client.get_or_create_collection(
 )
 
 model = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
-
-faqs = [
-    {"id": "1", "question": "Bagaimana cara reset password?", "answer": "Klik tombol 'Lupa Password' di halaman login."},
-    {"id": "2", "question": "Jam operasional bisnis Anda?", "answer": "Kami buka Senin sampai Jumat, pukul 08.00 sampai 17.00."},
-    {"id": "2a", "question": "Buka jam berapa?", "answer": "Kami buka Senin sampai Jumat, pukul 08.00 sampai 17.00."},
-    {"id": "2b", "question": "Jam kerja kantor Anda?", "answer": "Kami buka Senin sampai Jumat, pukul 08.00 sampai 17.00."},
-    {"id": "2c", "question": "Hari dan jam operasional Anda?", "answer": "Kami buka Senin sampai Jumat, pukul 08.00 sampai 17.00."},
-    {"id": "3", "question": "Bagaimana cara menghubungi layanan pelanggan?", "answer": "Anda bisa menghubungi kami melalui WhatsApp di nomor 0812-3456-7890."}
-]
 
 # Add to ChromaDB if not already added
 existing = collection.count()
@@ -76,9 +72,21 @@ def search_answer(user_input: str):
 
     THRESHOLD = 0.65  # You can tune this
     if best_score >= THRESHOLD:
-        return faqs[best_idx]["answer"]
+        return {
+            "code": 200,
+            "status": True,
+            "matched_question": faqs[best_idx]["question"],
+            "answer": faqs[best_idx]["answer"],
+            "similarity_score": float(best_score)  # <-- convert to Python float
+        }
     else:
-        return "Maaf, saya belum bisa menjawab pertanyaan itu."
+        return {
+            "code": 404,
+            "status": False,
+            "matched_question": None,
+            "answer": "Maaf, saya tidak dapat menemukan jawaban untuk pertanyaan Anda.",
+            "similarity_score": float(best_score)  # <-- convert to Python float
+        }
 
 # ----------------- Request Model ------------------
 class ChatRequest(BaseModel):
@@ -88,4 +96,9 @@ class ChatRequest(BaseModel):
 @app.post("/chat")
 def chatbot_reply(data: ChatRequest):
     response = search_answer(data.message)
-    return {"reply": response}
+    return JSONResponse(content=response, status_code=response["code"])
+
+# ----------------- Run the app ------------------
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8082)

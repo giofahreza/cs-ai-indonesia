@@ -1,0 +1,8 @@
+[
+    {"id": "1", "question": "Bagaimana cara reset password?", "answer": "Klik tombol 'Lupa Password' di halaman login."},
+    {"id": "2", "question": "Jam operasional bisnis Anda?", "answer": "Kami buka Senin sampai Jumat, pukul 08.00 sampai 17.00."},
+    {"id": "2a", "question": "Buka jam berapa?", "answer": "Kami buka Senin sampai Jumat, pukul 08.00 sampai 17.00."},
+    {"id": "2b", "question": "Jam kerja kantor Anda?", "answer": "Kami buka Senin sampai Jumat, pukul 08.00 sampai 17.00."},
+    {"id": "2c", "question": "Hari dan jam operasional Anda?", "answer": "Kami buka Senin sampai Jumat, pukul 08.00 sampai 17.00."},
+    {"id": "3", "question": "Bagaimana cara menghubungi layanan pelanggan?", "answer": "Anda bisa menghubungi kami melalui WhatsApp di nomor 0812-3456-7890."}
+]
