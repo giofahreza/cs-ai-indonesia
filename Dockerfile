@@ -5,6 +5,7 @@ WORKDIR /app
 # Install system dependencies (if needed)
 RUN apt-get update && apt-get install -y \
     build-essential \
+    nano \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements (create requirements.txt if you don't have it)
