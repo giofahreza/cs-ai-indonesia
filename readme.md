@@ -9,9 +9,8 @@ DOCKER SETUP
 git clone https://github.com/giofahreza/cs-ai-indonesia.git
 cp faqs_example.json faqs.json
 docker build -t cs-app-image .
-docker run -p 8082:8082 cs-app-image
-docker container run --name cs-app-container --rm -itd -e PORT=8082 -p 8082:8082 cs-app-image
-docker logs -f my-container
+docker container run --name cs-app-container --restart=on-failure  -itd -e PORT=8082 -p 8082:8082 --network cs-net cs-app-image
+docker logs -f cs-app-container
 
 ADD FAQS (after create docker container)
 docker exec -it cs-ai-indonesia bash
